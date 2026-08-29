@@ -12,7 +12,7 @@ const api: AxiosInstance = axios.create({
   },
 });
 
-setupRequestInterceptor(api);
-setupResponseInterceptor(api);
+// setupRequestInterceptor(api);
+// setupResponseInterceptor(api);
 
 export default api;
