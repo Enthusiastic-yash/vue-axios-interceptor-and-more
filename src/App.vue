@@ -28,11 +28,15 @@ function openModel() {
     </select>
   </Child> -->
 
-  <button @click="currentTab = 'ImageGallery'">ImageGallery</button>
-  <button @click="currentTab = 'InfiniteScrollImage'">InfiniteScrollImage</button>
+  <button v-for="(button, key) in tabs" :class="{ active: currentTab == key }" :key="key" @click="currentTab = key">{{
+    key }}
+  </button>
+
 
   <RouterView />
-  <Component :is="tabs[currentTab]"></Component>
+  <Transition name="fade" mode="out-in">
+    <Component :is="tabs[currentTab]"></Component>
+  </Transition>
 </template>
 <style>
 .container {
@@ -43,6 +47,17 @@ function openModel() {
 }
 
 .active {
-  background-color: blue;
+  background-color: black;
+  color: white
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
