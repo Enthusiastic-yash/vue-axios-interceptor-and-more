@@ -3,11 +3,13 @@ import { reactive, ref, computed, watch, onMounted, nextTick, type Component } f
 import Child from "./components/child.vue";
 import ImageGallery from "./components/imageGallery.vue";
 import InfiniteScrollImage from "./components/infiniteScrollImage.vue";
+import multiStepForm from "./components/multiStepForm.vue";
 
 const currentTab = ref('ImageGallery')
 const tabs = ref<Record<string, Component>>({
   ImageGallery: ImageGallery,
   InfiniteScrollImage: InfiniteScrollImage,
+  multiStepForm: multiStepForm
 })
 const modelRef = ref<InstanceType<typeof Child>>()
 const data = ref<string | undefined>('Modal')
@@ -35,7 +37,9 @@ function openModel() {
 
   <RouterView />
   <Transition name="fade" mode="out-in">
+
     <Component :is="tabs[currentTab]"></Component>
+
   </Transition>
 </template>
 <style>

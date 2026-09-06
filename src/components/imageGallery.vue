@@ -22,7 +22,7 @@ async function fetchImages() {
         }
     })
     images.value = image.data.photos
-    console.log(image.data.photos);
+    // console.log(image.data.photos);
 }
 
 

@@ -10,7 +10,7 @@ const lazyLoad: Directive<HTMLImageElementWithObserver, string> = {
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
-          console.log(entry.target);
+          // console.log(entry.target);
           el.src = binding.value;
           observer.unobserve(el);
         }
