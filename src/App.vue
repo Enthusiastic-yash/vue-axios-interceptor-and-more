@@ -4,6 +4,8 @@ import Child from "./components/child.vue";
 import ImageGallery from "./components/imageGallery.vue";
 import InfiniteScrollImage from "./components/infiniteScrollImage.vue";
 import multiStepForm from "./components/multiStepForm.vue";
+import dropDown from "./components/dropDown.vue";
+import type { DropdownOption } from './types/dropdown.ts'
 
 const currentTab = ref('ImageGallery')
 const tabs = ref<Record<string, Component>>({
@@ -13,6 +15,32 @@ const tabs = ref<Record<string, Component>>({
 })
 const modelRef = ref<InstanceType<typeof Child>>()
 const data = ref<string | undefined>('Modal')
+
+interface Fruit {
+  id: number
+  name: string
+}
+const fruitOptions: DropdownOption<Fruit>[] = [
+  {
+    id: 1,
+    label: 'Apple',
+    value: { id: 1, name: 'apple' },
+    disabled: false
+  },
+  {
+    id: 2,
+    label: 'Banana',
+    value: { id: 2, name: 'banana' },
+    disabled: true
+  },
+  {
+    id: 3,
+    label: 'Cherry',
+    value: { id: 3, name: 'cherry' },
+    disabled: false
+  }
+]
+const selectedFruit = ref<Fruit | null>(null)
 
 function openModel() {
   modelRef.value?.open()
@@ -30,17 +58,20 @@ function openModel() {
     </select>
   </Child> -->
 
+
+  <dropDown v-model="selectedFruit" :options="fruitOptions" placeholder="Please select one value"></dropDown>
+
+  <h2>seleced value : {{ selectedFruit }}</h2>
   <button v-for="(button, key) in tabs" :class="{ active: currentTab == key }" :key="key" @click="currentTab = key">{{
     key }}
   </button>
-
-
-  <RouterView />
   <Transition name="fade" mode="out-in">
 
     <Component :is="tabs[currentTab]"></Component>
 
   </Transition>
+
+
 </template>
 <style>
 .container {
