@@ -41,6 +41,19 @@ const fruitOptions: DropdownOption<Fruit>[] = [
   }
 ]
 const selectedFruit = ref<Fruit | null>(null)
+const selectedMultipleFruits = ref<Fruit[]>([])
+const selectedColors = ref<string[]>([])
+
+const colorOptions: DropdownOption<string>[] = [
+  { id: 1, label: 'Red', value: 'red', disabled: false },
+  { id: 2, label: 'Green', value: 'green', disabled: false },
+  { id: 3, label: 'Blue', value: 'blue', disabled: false },
+  { id: 4, label: 'Yellow (Disabled)', value: 'yellow', disabled: true },
+  { id: 5, label: 'Orange', value: 'orange', disabled: false },
+  { id: 6, label: 'sky blue', value: 'sky blue', disabled: false },
+  { id: 7, label: 'black', value: 'black', disabled: false },
+]
+
 
 function openModel() {
   modelRef.value?.open()
@@ -49,19 +62,29 @@ function openModel() {
 </script>
 
 <template>
-  <!-- <button @click="openModel">open</button> -->
-  <!-- <Child ref="modelRef" :data="data" placeholder="Enter your name">
-    <select>
-      <option value="1">one</option>
-      <option value="2">two</option>
-      <option value="3">three</option>
-    </select>
-  </Child> -->
+  <div style="display: flex; gap: 30px; flex-wrap: wrap; margin-bottom: 24px;">
+    <!-- 1. Single Select with Object -->
+    <div>
+      <h3>1. Single Select (Objects)</h3>
+      <dropDown v-model="selectedFruit" :options="fruitOptions" placeholder="Select a fruit" />
+      <p><strong>Selected:</strong> {{ selectedFruit }}</p>
+    </div>
 
+    <!-- 2. Multi Select with Objects -->
+    <div>
+      <h3>2. Multi Select (Objects)</h3>
+      <dropDown v-model="selectedMultipleFruits" :options="fruitOptions" placeholder="Select multiple fruits"
+        :multiple="true" />
+      <p><strong>Selected:</strong> {{ selectedMultipleFruits }}</p>
+    </div>
 
-  <dropDown v-model="selectedFruit" :options="fruitOptions" placeholder="Please select one value"></dropDown>
-
-  <h2>seleced value : {{ selectedFruit }}</h2>
+    <!-- 3. Multi Select with Simple Primitives (Strings) -->
+    <div>
+      <h3>3. Multi Select (Simple Strings)</h3>
+      <dropDown v-model="selectedColors" :options="colorOptions" placeholder="Select colors" :multiple="true" />
+      <p><strong>Selected:</strong> {{ selectedColors }}</p>
+    </div>
+  </div>
   <button v-for="(button, key) in tabs" :class="{ active: currentTab == key }" :key="key" @click="currentTab = key">{{
     key }}
   </button>
