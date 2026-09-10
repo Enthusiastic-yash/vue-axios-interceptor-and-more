@@ -103,29 +103,22 @@ function isSelected(option: DropdownOption<T>): boolean {
 
 // 7. Computed display text shown inside the trigger button
 const displayButtonText = computed(() => {
+    // helper: kisi bhi value ke liye uska label dhoondo
+    function getLabel(value: T) {
+        return props.options.find(opt => isMatch(opt.value, value))?.label
+    }
+
     // Multi-select mode
     if (props.multiple && Array.isArray(props.modelValue)) {
-        if (props.modelValue.length === 0) {
-            return props.placeholder;
-        }
-        // Find matching option labels
-        const matchedLabels = props.options
-            .filter(opt => (props.modelValue as T[]).some(v => isMatch(opt.value, v)))
-            .map(opt => opt.label);
-
-        if (matchedLabels.length > 0) {
-            return matchedLabels.join(', ');
-        }
-        return `${props.modelValue.length} selected`;
+        const selected = props.modelValue
+        if (selected.length === 0) return props.placeholder
+        const labels = selected.map(getLabel).filter(Boolean) // remove undefined value
+        return labels.length > 0 ? labels.join(', ') : `${selected.length} selected`
     }
 
     // Single-select mode
-    const found = props.options.find(opt => isMatch(opt.value, props.modelValue));
-    if (found) {
-        return found.label ?? String(found.value);
-    }
-    return props.placeholder;
-});
+    return getLabel(props.modelValue as T) ?? props.placeholder
+})
 
 // 8. Toggle open / close state
 function toggleDropdown() {
