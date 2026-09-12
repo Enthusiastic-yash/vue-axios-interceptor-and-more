@@ -6,6 +6,7 @@ import InfiniteScrollImage from "./components/infiniteScrollImage.vue";
 import multiStepForm from "./components/multiStepForm.vue";
 import dropDown from "./components/dropDown.vue";
 import type { DropdownOption } from './types/dropdown.ts'
+import newDropDown from "./components/newDropDown.vue";
 
 const currentTab = ref('ImageGallery')
 const tabs = ref<Record<string, Component>>({
@@ -38,11 +39,25 @@ const fruitOptions: DropdownOption<Fruit>[] = [
     label: 'Cherry',
     value: { id: 3, name: 'cherry' },
     disabled: false
-  }
+  },
+  {
+    id: 4,
+    label: 'kiwi',
+    value: { id: 4, name: 'kiwi' },
+    disabled: false
+  },
+  {
+    id: 5,
+    label: 'Mango',
+    value: { id: 5, name: 'mango' },
+    disabled: false
+  },
 ]
 const selectedFruit = ref<Fruit | null>(null)
 const selectedMultipleFruits = ref<Fruit[]>([])
 const selectedColors = ref<string[]>([])
+const selectedNewFruit = ref<Fruit | null>(null)
+
 
 const colorOptions: DropdownOption<string>[] = [
   { id: 1, label: 'Red', value: 'red', disabled: false },
@@ -63,6 +78,14 @@ function openModel() {
 
 <template>
   <div style="display: flex; gap: 30px; flex-wrap: wrap; margin-bottom: 24px;">
+    <div>
+      <h3>New drop down</h3>
+      <newDropDown :options="fruitOptions" v-model="selectedNewFruit" :multiple="true"
+        placeholder="please select any one value" />
+      <p> selected model value : {{ selectedNewFruit }}</p>
+
+    </div>
+
     <!-- 1. Single Select with Object -->
     <div>
       <h3>1. Single Select (Objects)</h3>
