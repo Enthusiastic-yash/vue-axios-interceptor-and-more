@@ -18,6 +18,8 @@
 
             </li>
         </ul>
+        <span v-if="errorMessage" class="error-text">{{ errorMessage }}</span>
+
     </div>
 </template>
 
@@ -30,6 +32,7 @@ const props = withDefaults(defineProps<{
     modelValue: T | T[] | null;
     placeholder: string;
     multiple?: boolean;
+    errorMessage?: string;
 }>(),
     {
         placeholder: 'select...',
@@ -314,5 +317,9 @@ onBeforeUnmount(() => {
 
 .dropdown-item.is-selected.is-active {
     background-color: #222222;
+}
+
+.error-text {
+    color: red;
 }
 </style>

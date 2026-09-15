@@ -1,10 +1,14 @@
 <template>
     <div class="dropdown" ref="dropdownRef" @keydown="onKeydown">
         <!-- Dropdown Trigger Button -->
-        <button ref="triggerBtnRef" type="button" class="dropdown-trigger" :class="{ 'is-open': isOpen }"
-            aria-haspopup="listbox" :aria-expanded="isOpen" :aria-controls="listboxId"
+        <button ref="triggerBtnRef" type="button" class="dropdown-trigger" :class="{
+            'is-open': isOpen,
+            'has-error': hasError,
+            'is-disabled': disabled
+        }" :disabled="disabled" aria-haspopup="listbox" :aria-expanded="isOpen" :aria-controls="listboxId"
+            :aria-invalid="hasError ? 'true' : undefined" :aria-describedby="hasError ? errorId : undefined"
             :aria-activedescendant="isOpen && activeIndex >= 0 ? getOptionId(activeIndex) : undefined"
-            @click="toggleDropdown">
+            @click="toggleDropdown" @blur="onTriggerBlur">
             <span class="dropdown-trigger-text">{{ displayButtonText }}</span>
             <span class="dropdown-arrow" aria-hidden="true">{{ isOpen ? '▲' : '▼' }}</span>
         </button>
@@ -25,52 +29,99 @@
                 </span>
                 <span class="option-label">{{ option.label }}</span>
 
-
                 <!-- Checkmark visual indicator for single-select -->
                 <span v-if="!multiple && isSelected(option)" class="check-icon" aria-hidden="true">✓</span>
             </li>
         </ul>
+
+        <!-- Validation Error Message / Customizable Slot -->
+        <slot name="error" :message="errorMessage" :meta="meta">
+            <p v-if="showError && hasError" :id="errorId" class="dropdown-error-message" role="alert">
+                {{ errorMessage }}
+            </p>
+        </slot>
     </div>
 </template>
 
 <script setup lang="ts" generic="T">
 import type { DropdownOption } from '../types/dropdown';
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, useId } from "vue";
+import { useField } from 'vee-validate';
 
-// 1. Props Definition
+// 1. Props Definition (Supports both standalone v-model and VeeValidate forms)
 const props = withDefaults(
     defineProps<{
         options: DropdownOption<T>[];
-        modelValue: T | T[] | null;
+        modelValue?: T | T[] | null;
+        name?: string;               // VeeValidate field name (for form schema/rules)
+        rules?: any;                  // Standalone validation rules (string, yup, zod, function)
+        label?: string;               // Friendly name for error messages
         placeholder?: string;
         multiple?: boolean;
+        disabled?: boolean;
+        showError?: boolean;          // Controls whether the error message is displayed below
     }>(),
     {
         placeholder: 'Select...',
-        multiple: false
+        multiple: false,
+        disabled: false,
+        showError: true
     }
 );
 
 // 2. Emits Definition
 const emit = defineEmits<{
     'update:modelValue': [value: T | T[] | null];
+    'blur': [];
+    'change': [value: T | T[] | null];
 }>();
 
-// 3. Template Refs & State
+// 3. VeeValidate useField Integration
+// When props.name is provided, it connects to parent VeeValidate <Form> context.
+// When props.name is not provided, standalone: true allows it to work normally with v-model.
+const fieldName = computed(() => props.name || '');
+
+const {
+    value: fieldValue,
+    errorMessage,
+    meta,
+    handleBlur: veeHandleBlur,
+    handleChange: veeHandleChange
+} = useField<T | T[] | null>(fieldName, props.rules, {
+    syncVModel: true,
+    standalone: !props.name,
+    label: props.label || props.name
+});
+
+// Current active value: reads from VeeValidate field or v-model prop
+const currentValue = computed<T | T[] | null>(() => {
+    if (props.name) {
+        return fieldValue.value !== undefined ? fieldValue.value : (props.modelValue ?? null);
+    }
+    return props.modelValue ?? null;
+});
+
+// Error visibility: Show error if message exists and user interacted or form was submitted
+const hasError = computed(() => {
+    return Boolean(errorMessage.value && (meta.touched || meta.validated || meta.dirty));
+});
+
+// 4. Template Refs & State
 const isOpen = ref(false);
 const activeIndex = ref(-1); // Tracks currently keyboard-highlighted option
 const dropdownRef = ref<HTMLElement | null>(null);
 const triggerBtnRef = ref<HTMLButtonElement | null>(null);
 const listboxRef = ref<HTMLUListElement | null>(null);
 
-// 4. Unique IDs for ARIA accessibility
+// 5. Unique IDs for ARIA accessibility
 const uniqueId = useId();
 const listboxId = `${uniqueId}-listbox`;
+const errorId = `${uniqueId}-error`;
 function getOptionId(index: number) {
     return `${uniqueId}-option-${index}`;
 }
 
-// 5. Universal Equality Checker (Handles primitives, IDs, and complex objects)
+// 6. Universal Equality Checker (Handles primitives, IDs, and complex objects)
 function isMatch(val1: any, val2: any): boolean {
     if (val1 === val2) return true;
     if (val1 == null || val2 == null) return false;
@@ -91,37 +142,44 @@ function isMatch(val1: any, val2: any): boolean {
     return false;
 }
 
-// 6. Check if an option is selected (Supports single value or array)
+// 7. Check if an option is selected (Supports single value or array)
 function isSelected(option: DropdownOption<T>): boolean {
-    if (props.modelValue == null) return false;
+    const val = currentValue.value;
+    if (val == null) return false;
 
-    if (props.multiple && Array.isArray(props.modelValue)) {
-        return props.modelValue.some(val => isMatch(option.value, val));
+    if (props.multiple && Array.isArray(val)) {
+        return val.some(item => isMatch(option.value, item));
     }
-    return isMatch(option.value, props.modelValue);
+    return isMatch(option.value, val);
 }
 
-// 7. Computed display text shown inside the trigger button
+// 8. Computed display text shown inside the trigger button
 const displayButtonText = computed(() => {
-    // helper: kisi bhi value ke liye uska label dhoondo
     function getLabel(value: T) {
-        return props.options.find(opt => isMatch(opt.value, value))?.label
+        return props.options.find(opt => isMatch(opt.value, value))?.label;
     }
 
+    const val = currentValue.value;
+
     // Multi-select mode
-    if (props.multiple && Array.isArray(props.modelValue)) {
-        const selected = props.modelValue
-        if (selected.length === 0) return props.placeholder
-        const labels = selected.map(getLabel).filter(Boolean) // remove undefined value
-        return labels.length > 0 ? labels.join(', ') : `${selected.length} selected`
+    if (props.multiple && Array.isArray(val)) {
+        if (val.length === 0) return props.placeholder;
+        const labels = val.map(getLabel).filter(Boolean);
+        return labels.length > 0 ? labels.join(', ') : `${val.length} selected`;
     }
 
     // Single-select mode
-    return getLabel(props.modelValue as T) ?? props.placeholder
-})
+    if (val != null) {
+        const label = getLabel(val as T);
+        if (label != null) return label;
+    }
 
-// 8. Toggle open / close state
+    return props.placeholder;
+});
+
+// 9. Toggle open / close state
 function toggleDropdown() {
+    if (props.disabled) return;
     if (isOpen.value) {
         closeDropdown();
     } else {
@@ -130,6 +188,7 @@ function toggleDropdown() {
 }
 
 function openDropdown() {
+    if (props.disabled) return;
     isOpen.value = true;
     // Set initial keyboard highlight: focus currently selected option or first available
     const firstSelectedIndex = props.options.findIndex(opt => isSelected(opt));
@@ -142,15 +201,30 @@ function openDropdown() {
 }
 
 function closeDropdown() {
+    if (!isOpen.value) return;
     isOpen.value = false;
     activeIndex.value = -1;
+
+    // Notify VeeValidate that the field was blurred/interacted with
+    veeHandleBlur();
+    emit('blur');
 }
 
-// 9. Select Option Logic (Handles both single and multi-select)
+function onTriggerBlur() {
+    // When focus leaves the button while dropdown is closed, mark as blurred
+    if (!isOpen.value) {
+        veeHandleBlur();
+        emit('blur');
+    }
+}
+
+// 10. Select Option Logic (Handles single & multi-select, updates VeeValidate & emits)
 function selectOption(option: DropdownOption<T>) {
-    if (option.disabled) return;
+    if (option.disabled || props.disabled) return;
+
     if (props.multiple) {
-        const currentList = Array.isArray(props.modelValue) ? [...props.modelValue] : [];
+        const cur = currentValue.value;
+        const currentList = Array.isArray(cur) ? [...cur] : [];
         const existingIndex = currentList.findIndex(val => isMatch(option.value, val));
 
         if (existingIndex > -1) {
@@ -160,23 +234,29 @@ function selectOption(option: DropdownOption<T>) {
             // Not selected: add to selection
             currentList.push(option.value);
         }
+
+        // Update VeeValidate form state & emit events
+        veeHandleChange(currentList);
         emit('update:modelValue', currentList);
+        emit('change', currentList);
     } else {
-        // Single selection: emit value, close dropdown, and return focus to button
+        // Single selection
+        veeHandleChange(option.value);
         emit('update:modelValue', option.value);
+        emit('change', option.value);
         closeDropdown();
         triggerBtnRef.value?.focus();
     }
 }
 
-// 10. Mouse hover sync with keyboard highlight
+// 11. Mouse hover sync with keyboard highlight
 function onOptionHover(index: number) {
     if (!props.options[index]?.disabled) {
         activeIndex.value = index;
     }
 }
 
-// 11. Scroll the active keyboard option into view inside scrollable menu
+// 12. Scroll the active keyboard option into view inside scrollable menu
 function scrollToActive() {
     nextTick(() => {
         if (!listboxRef.value || activeIndex.value < 0) return;
@@ -203,8 +283,10 @@ function moveActive(direction: 1 | -1) {
     }
 }
 
-// 12. Full Keyboard Navigation Handler
+// 13. Full Keyboard Navigation Handler
 function onKeydown(event: KeyboardEvent) {
+    if (props.disabled) return;
+
     switch (event.key) {
         case 'ArrowDown':
             event.preventDefault();
@@ -270,7 +352,7 @@ function onKeydown(event: KeyboardEvent) {
             break;
 
         case 'Tab':
-            // If user tabs away, cleanly close the dropdown
+            // If user tabs away, cleanly close the dropdown and blur
             if (isOpen.value) {
                 closeDropdown();
             }
@@ -278,7 +360,7 @@ function onKeydown(event: KeyboardEvent) {
     }
 }
 
-// 13. Click outside listener
+// 14. Click outside listener
 function handleOutsideClick(event: MouseEvent) {
     if (dropdownRef.value && !dropdownRef.value.contains(event.target as Node)) {
         closeDropdown();
@@ -291,6 +373,16 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     window.removeEventListener("click", handleOutsideClick);
+});
+
+// Expose useful VeeValidate field context for template ref access if needed
+defineExpose({
+    value: fieldValue,
+    errorMessage,
+    meta,
+    hasError,
+    open: openDropdown,
+    close: closeDropdown
 });
 </script>
 
@@ -317,6 +409,7 @@ onBeforeUnmount(() => {
     text-align: left;
     transition: all 0.2s ease;
     gap: 8px;
+    box-sizing: border-box;
 }
 
 .dropdown-trigger:focus-visible {
@@ -326,6 +419,24 @@ onBeforeUnmount(() => {
 
 .dropdown-trigger.is-open {
     border-color: #000000;
+}
+
+/* Error State */
+.dropdown-trigger.has-error {
+    border-color: #dc2626;
+    background-color: #fff8f8;
+}
+
+.dropdown-trigger.has-error:focus-visible {
+    outline-color: #dc2626;
+}
+
+/* Disabled State */
+.dropdown-trigger.is-disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
 }
 
 .dropdown-trigger-text {
@@ -417,5 +528,14 @@ onBeforeUnmount(() => {
 .check-icon {
     font-size: 14px;
     font-weight: bold;
+}
+
+/* Error Message Below Dropdown */
+.dropdown-error-message {
+    margin: 4px 0 0 2px;
+    font-size: 12px;
+    color: #dc2626;
+    font-weight: 500;
+    line-height: 1.4;
 }
 </style>
