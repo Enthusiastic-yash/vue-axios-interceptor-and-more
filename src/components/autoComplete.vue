@@ -1,12 +1,12 @@
 <template>
-    <div ref="containerRef" class="autoComplete-container">
+    <div ref="containerRef" class="autoComplete-container" @keydown="handleKeyDown">
         <div>
             <input type="text" v-model="query" :placeholder="props.placeholder" class="autocomplete-input" />
         </div>
         <div v-if="isLoading" class="loader">Loading...</div>
-        <ul v-if="isOpen && options.length > 0" class="autocomplete-dropdown">
+        <ul v-if="isOpen && options.length > 0" class="autocomplete-dropdown" ref="listboxRef">
             <li v-for="(option, index) in options" :key="index" @click="handleSelectOption(option)"
-                class="autocomplete-item">
+                :class="{ highlighted: index == hightLightIndex }" class="autocomplete-item">
                 <slot name="option" :option="option">
                     {{ getOptionLabel(option) }}
                 </slot>
@@ -17,7 +17,7 @@
 
 <script setup lang="ts" generic="T">
 import { useDebounce } from "@/composable/useDebounce";
-import { ref, watch, type Ref } from "vue"
+import { onBeforeUnmount, onMounted, ref, watch, type Ref } from "vue"
 const props = withDefaults(defineProps<{
     fetchOption: (query: string, signal: AbortSignal) => Promise<T[]>;
     placeholder?: string;
@@ -34,6 +34,8 @@ const isLoading = ref(false);
 const options = ref([]) as Ref<T[]>
 const isOpen = ref(false);
 const hightLightIndex = ref(-1);
+const containerRef = ref<HTMLDivElement | null>(null)
+const listboxRef = ref<HTMLUListElement | null>(null)
 
 
 const debounceQuery = useDebounce(query, props.debounceTime);
@@ -76,16 +78,79 @@ watch(debounceQuery, async (newQuery) => {
     }
 })
 
+
+function scrollToActive() {
+
+    if (!listboxRef.value || hightLightIndex.value < 0) return;
+    const activeElement = listboxRef.value.children[hightLightIndex.value] as HTMLElement;
+
+    if (activeElement && activeElement.scrollIntoView) {
+        activeElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+}
+
 function handleSelectOption(option: T) {
     emit('select', option)
     query.value = props.getOptionLabel(option)
     isOpen.value = false;
 }
 
+function handleKeyDown(event: KeyboardEvent) {
+    if (!isOpen.value) return;
+    switch (event.key) {
+        case 'ArrowDown':
+            event.preventDefault()
+            if (hightLightIndex.value < options.value.length - 1) {
+                hightLightIndex.value++;
+                scrollToActive()
+            } else {
+                hightLightIndex.value = 0;
+            }
+            break;
+
+        case 'ArrowUp':
+            event.preventDefault()
+            if (hightLightIndex.value > 0) {
+                hightLightIndex.value--;
+                scrollToActive();
+            } else {
+                hightLightIndex.value = options.value.length - 1;
+            }
+            break;
+
+        case 'Enter':
+        case ' ':
+            event.preventDefault()
+            if (hightLightIndex.value > 0 && options.value[hightLightIndex.value]) {
+                handleSelectOption(options.value[hightLightIndex.value] as T)
+            }
+            break;
+
+        case 'Escape':
+            if (isOpen.value) {
+                event.preventDefault();
+                isOpen.value = false;
+            }
+            break;
+    }
+}
 
 
+function handleClickOutside(event: MouseEvent) {
+    if (containerRef.value && !containerRef.value.contains(event.target as Node)) {
+        isOpen.value = false;
+    }
+}
 
 
+onMounted(() => {
+    window.addEventListener('click', handleClickOutside)
+})
+
+onBeforeUnmount(() => {
+    window.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <style scoped>
