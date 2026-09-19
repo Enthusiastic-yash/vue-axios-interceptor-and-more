@@ -5,6 +5,7 @@ import ImageGallery from "./components/imageGallery.vue";
 import InfiniteScrollImage from "./components/infiniteScrollImage.vue";
 import DropDownExample from "./components/dropDownExample.vue";
 import multiStepForm from "./components/multiStepForm.vue";
+import autoCompleteExample from "./components/autoCompleteExample.vue";
 
 
 const currentTab = ref('ImageGallery')
@@ -12,7 +13,8 @@ const tabs = ref<Record<string, Component>>({
   ImageGallery: ImageGallery,
   InfiniteScrollImage: InfiniteScrollImage,
   DropDownExample: DropDownExample,
-  multiStepForm: multiStepForm
+  multiStepForm: multiStepForm,
+  autoCompleteExample: autoCompleteExample
 
 })
 const modelRef = ref<InstanceType<typeof Child>>()
