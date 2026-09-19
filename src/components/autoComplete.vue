@@ -1,5 +1,5 @@
 <template>
-    <div ref="containerRef" class="autoComplete-container" @keydown="handleKeyDown">
+    <div v-click-outside="closeDropDown" class="autoComplete-container" @keydown="handleKeyDown">
         <div>
             <input type="text" v-model="query" @input="handleInput" :placeholder="props.placeholder"
                 class="autocomplete-input" />
@@ -19,6 +19,7 @@
 <script setup lang="ts" generic="T">
 import { useDebounce } from "@/composable/useDebounce";
 import { onBeforeUnmount, onMounted, ref, watch, nextTick, type Ref } from "vue"
+import { vClickOutside } from "@/directives/clickOutside";
 const props = withDefaults(defineProps<{
     fetchOption: (query: string, signal: AbortSignal) => Promise<T[]>;
     placeholder?: string;
@@ -36,7 +37,6 @@ const options = ref([]) as Ref<T[]>
 const isOpen = ref(false);
 const hightLightIndex = ref(-1);
 const isUserTyping = ref(false);
-const containerRef = ref<HTMLDivElement | null>(null)
 const listboxRef = ref<HTMLUListElement | null>(null)
 
 const debounceQuery = useDebounce(query, props.debounceTime);
@@ -49,6 +49,13 @@ let abortController: AbortController | null = null;
 
 function handleInput() {
     isUserTyping.value = true;
+}
+
+
+function closeDropDown() {
+    if (isOpen.value) {
+        isOpen.value = false
+    }
 }
 
 watch(debounceQuery, async (newQuery) => {
@@ -160,21 +167,11 @@ function handleKeyDown(event: KeyboardEvent) {
     }
 }
 
-function handleClickOutside(event: MouseEvent) {
-    if (containerRef.value && !containerRef.value.contains(event.target as Node)) {
-        isOpen.value = false;
-    }
-}
-
-onMounted(() => {
-    window.addEventListener('click', handleClickOutside)
-})
 
 onBeforeUnmount(() => {
     if (abortController) {
         abortController.abort();
     }
-    window.removeEventListener('click', handleClickOutside)
 })
 </script>
 
