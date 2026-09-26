@@ -7,6 +7,7 @@ import DropDownExample from "./components/dropDownExample.vue";
 import multiStepForm from "./components/multiStepForm.vue";
 import autoCompleteExample from "./components/autoCompleteExample.vue";
 import modalExample from "./components/modalExample.vue";
+import accordionExample from "./components/accordionExample.vue";
 
 
 const currentTab = ref('ImageGallery')
@@ -16,7 +17,8 @@ const tabs = ref<Record<string, Component>>({
   DropDownExample: DropDownExample,
   multiStepForm: multiStepForm,
   autoCompleteExample: autoCompleteExample,
-  modalExample: modalExample
+  modalExample: modalExample,
+  accordionExample: accordionExample
 
 })
 const modelRef = ref<InstanceType<typeof Child>>()
